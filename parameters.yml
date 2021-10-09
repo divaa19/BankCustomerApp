@@ -3,6 +3,6 @@ variables:
   jdkversion: '1.11'
   artifactname: 'springbootapp'
   acrname: 'devopsDemo87'
-  acrrepo: 'devopsDemo87'
+  acrrepo: 'bankcustomerapp'
 
 
