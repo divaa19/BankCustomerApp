@@ -35,11 +35,11 @@ steps:
     inputs:
       pollingTimeoutSec: '300'
 
-- task: PublishPipelineArtifact@1
-  inputs:
-    targetPath: '$(Pipeline.Workspace)'
-    artifact: 'BankCustomerApp'
-    publishLocation: 'pipeline'
+  - task: PublishPipelineArtifact@1
+    inputs:
+      targetPath: '$(Pipeline.Workspace)'
+      artifact: 'BankCustomerApp'
+      publishLocation: 'pipeline'
 
   - task: Docker@2
     inputs:
