@@ -4,16 +4,40 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/java
 
 trigger:
-- master
+  - master
 
 pool:
   vmImage: ubuntu-latest
 
 steps:
 
-- task: Docker@2
-  inputs:
-    containerRegistry: 'devopsDemo87'
-    repository: 'BankCustomerApp'
-    command: 'buildAndPush'
-    Dockerfile: '**/Dockerfile'
+  - task: SonarCloudPrepare@1
+    inputs:
+      SonarCloud: 'sonarConnection'
+      organization: 'app-org-scanner'
+      scannerMode: 'Other'
+      extraProperties:
+        sonar.projectKey=${{ variables.sonarprojectKey }}
+
+  - task: Maven@3
+    inputs:
+      mavenPomFile: 'pom.xml'
+      publishJUnitResults: true
+      testResultsFiles: '**/surefire-reports/TEST-*.xml'
+      javaHomeOption: 'JDKVersion'
+      mavenVersionOption: 'Default'
+      mavenAuthenticateFeed: false
+      effectivePomSkip: false
+      sonarQubeRunAnalysis: true
+      sqMavenPluginVersionChoice: 'latest'
+
+  - task: SonarCloudPublish@1
+    inputs:
+      pollingTimeoutSec: '300'
+
+  - task: Docker@2
+    inputs:
+      containerRegistry: ${{ variables.acrname }}
+      repository: ${{ variables.acrrepo }}
+      command: 'buildAndPush'
+      Dockerfile: '**/Dockerfile'
