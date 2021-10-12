@@ -1,49 +1,95 @@
-# Maven
-# Build your Java project and run tests with Apache Maven.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/java
-
 trigger:
   - master
 
-pool:
-  vmImage: ubuntu-latest
+variables:
+  - template: parameters.yml
 
-steps:
 
-  - task: SonarCloudPrepare@1
-    inputs:
-      SonarCloud: 'sonarConnection'
-      organization: 'app-org-scanner'
-      scannerMode: 'Other'
-      extraProperties:
-        sonar.projectKey=${{ variables.sonarprojectKey }}
+stages:
+- stage: Build
+  displayName: Build stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: ubuntu-latest
+    steps:
 
-  - task: Maven@3
-    inputs:
-      mavenPomFile: 'pom.xml'
-      publishJUnitResults: true
-      testResultsFiles: '**/surefire-reports/TEST-*.xml'
-      javaHomeOption: 'JDKVersion'
-      mavenVersionOption: 'Default'
-      mavenAuthenticateFeed: false
-      effectivePomSkip: false
-      sonarQubeRunAnalysis: true
-      sqMavenPluginVersionChoice: 'latest'
+    - task: SonarCloudPrepare@1
+      inputs:
+        SonarCloud: 'sonarConnection'
+        organization: 'app-org-scanner'
+        scannerMode: 'Other'
+        extraProperties:
+          sonar.projectKey=${{ variables.sonarprojectKey }}
 
-  - task: SonarCloudPublish@1
-    inputs:
-      pollingTimeoutSec: '300'
+    - task: Maven@3
+      inputs:
+        mavenPomFile: 'pom.xml'
+        publishJUnitResults: true
+        testResultsFiles: '**/surefire-reports/TEST-*.xml'
+        javaHomeOption: 'JDKVersion'
+        jdkVersionOption: ${{ variables.jdkversion }}
+        mavenVersionOption: 'Default'
+        mavenAuthenticateFeed: false
+        effectivePomSkip: false
+        sonarQubeRunAnalysis: true
+        sqMavenPluginVersionChoice: 'latest'
+        goals: 'package'
 
-  - task: PublishPipelineArtifact@1
-    inputs:
-      targetPath: '$(Pipeline.Workspace)'
-      artifact: 'BankCustomerApp'
-      publishLocation: 'pipeline'
+    - task: SonarCloudPublish@1
+      inputs:
+        pollingTimeoutSec: '300'
 
-  - task: Docker@2
-    inputs:
-      containerRegistry: ${{ variables.acrname }}
-      repository: ${{ variables.acrrepo }}
-      command: 'buildAndPush'
-      Dockerfile: '**/Dockerfile'
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Pipeline.Workspace)'
+        artifact: ${{ variables.artifactname }}
+        publishLocation: 'pipeline'
+
+    
+
+  
+  
+- stage: Deploy
+  displayName: Deploy
+  jobs:
+  - job: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        buildType: 'current'
+        artifactName: ${{ variables.artifactname }}
+        targetPath: '$(Pipeline.Workspace)/drop'
+    
+    
+    - task: AzureResourceManagerTemplateDeployment@3
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: ${{ variables.azureResourceManagerConnection }}
+        subscriptionId: ${{ variables.subscriptionId }}
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: ${{ variables.resourceGroupName }}
+        location: 'Central US'
+        templateLocation: 'Linked artifact'
+        csmFile: '$(Pipeline.Workspace)/drop/webapp.json'
+        csmParametersFile: '$(Pipeline.Workspace)/drop/webapp.parameters.json'
+        deploymentMode: 'Incremental'
+    
+    
+    
+    
+   - task: AzureRmWebAppDeployment@4
+      inputs:
+        appType: webApp
+        ConnectionType: AzureRM            
+        ConnectedServiceName: ${{ variables.azuresubscription }}
+        ResourceGroupName: ${{ variables.rgname }}
+        WebAppName: ${{ variables.webapp }}
+        Package: '$(Pipeline.Workspace)/drop/*.jar'
+        RuntimeStack: 'JAVA|11-java11'
+        StartupCommand: 'java - jar '$(Pipeline.Workspace)/drop/springbootapp-1.0.0.jar'
+      

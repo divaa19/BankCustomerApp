@@ -1,8 +1,17 @@
 variables:
   sonarprojectKey: 'learning-spring'
   jdkversion: '1.11'
-  artifactname: 'springbootapp'
-  acrname: 'devopsDemo87'
-  acrrepo: 'bankcustomerapp'
+  artifactname: 'BankCustomerApp'
+  azuresubscription: '<your susbscription ID>'
+  rgname: '<resource group>'
+  webapp: 'BankCustomerApp'
+  azureResourceManagerConnection: '<arm connection name>'
+  subscriptionId: '<your subscription id>'
+  resourceGroupName: '<resource group name>'
+
+
+
+
+ 
 
 
